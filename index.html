@@ -351,6 +351,15 @@ function renderAdmin(){
     const testBtn = el(`<button class="btn-secondary">👀 Open it yourself to test</button>`);
     testBtn.addEventListener('click', () => { location.href = url; });
     resultBox.appendChild(testBtn);
+    resultBox.appendChild(el(`<div style="height:8px"></div>`));
+    const shortenBtn = el(`<button class="btn-secondary">🔗 Copy link + shorten it</button>`);
+    shortenBtn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); showToast('Link copied — paste it on the page that opens', true); }
+      catch(e) { showToast('Copy failed — copy the link above manually, then paste it there', false); }
+      window.open('https://is.gd/create.php', '_blank');
+    });
+    resultBox.appendChild(shortenBtn);
+    resultBox.appendChild(el(`<p class="muted" style="font-size:0.8rem;margin:8px 0 0">Opens is.gd, a free link shortener — paste the copied link there and it'll give you a short one (like is.gd/abc123) to send instead.</p>`));
   });
 
   renderCounts();
