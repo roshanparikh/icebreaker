@@ -1,0 +1,534 @@
+<title>Icebreaker Hunt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<style>
+  /* ---- Design: a case-file / cork-board mixer, built for one dark room. ----
+     Committed single-theme (see artifact-design guidance): this is a phone
+     game played at an evening mixer, so a warm, low-glare dark ground is a
+     deliberate choice, not a default. Every color is painted explicitly. */
+  :root{
+    --ink:#1b1712;        /* page ground: warm near-black, not pure grey/black */
+    --panel:#25201a;      /* card surface */
+    --panel-2:#322a22;    /* recessed surface: progress track, inputs */
+    --line:#3c3226;       /* hairline borders */
+    --text:#ece3d3;       /* primary text: warm off-white */
+    --muted:#a89880;      /* secondary text: warm taupe */
+    --m1:#e8a33d;         /* amber pin — M1 group */
+    --up:#4f9d95;         /* dusty teal pin — Upperclassman group */
+    --good:#7fb069;       /* found / success */
+    --bad:#d1614a;        /* error, muted brick */
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--text);min-height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+  h1,h2,.display{font-family:Georgia,"Iowan Old Style","Times New Roman",serif;}
+  h1{font-size:1.6rem;margin:0 0 4px;text-wrap:balance;}
+  h2{font-size:1.05rem;margin:22px 0 8px;color:var(--text);}
+  p.muted{color:var(--muted);margin:0 0 14px;line-height:1.4;}
+  .eyebrow{
+    font-size:0.68rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;
+    color:var(--muted);
+  }
+  .player-name{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-size:2.4rem;font-weight:700;line-height:1.05;margin:2px 0 18px;
+    text-wrap:balance;color:var(--text);
+  }
+  .wrap{max-width:480px;margin:0 auto;width:100%;padding:22px 16px 48px;flex:1;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  button{font:inherit;border:none;border-radius:999px;padding:14px 20px;font-weight:700;cursor:pointer;touch-action:manipulation;}
+  .btn-primary{background:var(--m1);color:#241804;width:100%;font-size:1rem;}
+  .btn-primary:disabled{opacity:0.4;}
+  .btn-secondary{background:var(--panel-2);color:var(--text);width:100%;font-size:0.92rem;border:1px solid var(--line);}
+  .btn-primary:active,.btn-secondary:active{transform:scale(0.98);}
+
+  input[type="text"],input[type="datetime-local"]{
+    width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);font-size:1rem;margin-bottom:10px;
+  }
+  label.field-label{display:block;font-size:0.78rem;color:var(--muted);margin:14px 0 6px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;position:relative;}
+  .card.pinned::before{
+    content:"";position:absolute;top:12px;left:12px;width:8px;height:8px;border-radius:50%;
+    background:var(--pin,var(--m1));box-shadow:0 0 0 3px color-mix(in srgb, var(--pin,var(--m1)) 25%, transparent);
+  }
+  .card.pinned{padding-left:30px;}
+
+  .badge{display:inline-block;font-size:0.7rem;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:0.04em;}
+  .badge.m1{background:color-mix(in srgb, var(--m1) 22%, transparent);color:var(--m1);}
+  .badge.upperclassman{background:color-mix(in srgb, var(--up) 22%, transparent);color:var(--up);}
+  .badge.warn{background:color-mix(in srgb, var(--bad) 25%, transparent);color:var(--bad);}
+
+  .progress-bar{
+    position:sticky;top:0;z-index:5;background:rgba(27,23,18,0.94);backdrop-filter:blur(6px);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);
+  }
+  .progress-track{flex:1;height:9px;border-radius:999px;background:var(--panel-2);margin:0 12px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--m1),var(--good));transition:width 0.4s ease;}
+
+  .fact-card ul{margin:0;padding-left:18px;color:var(--muted);}
+  .fact-card.found{border-color:var(--good);}
+  .fact-card.found ul{color:var(--text);}
+  .fact-card .found-name{font-weight:700;color:var(--good);margin-bottom:6px;font-family:Georgia,serif;}
+  .fact-card:not(.found):active{background:var(--panel-2);border-color:var(--m1);}
+
+  .toast{
+    position:fixed;left:16px;right:16px;bottom:20px;max-width:480px;margin:0 auto;padding:15px;
+    border-radius:12px;font-weight:700;text-align:center;transform:translateY(140%);
+    transition:transform 0.25s ease;z-index:20;
+  }
+  .toast.show{transform:translateY(0);}
+  .toast.good{background:var(--good);color:#0e1f08;}
+  .toast.bad{background:var(--bad);color:#2a0906;}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(10,8,5,0.75);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:100%;max-width:400px;}
+
+  .countdown{text-align:center;padding:60px 16px;}
+  .countdown .big{font-size:2.4rem;font-weight:700;font-family:Georgia,serif;}
+
+  .name-row{
+    display:flex;align-items:center;justify-content:space-between;padding:13px 4px;
+    border-bottom:1px solid var(--line);cursor:pointer;
+  }
+  .name-row:active{background:var(--panel-2);}
+
+  .attend-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line);}
+  .attend-row .fact-preview{flex:1;min-width:0;}
+  .attend-row .fact-preview .nm{font-weight:600;}
+  .attend-row .fact-preview .fc{color:var(--muted);font-size:0.82rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .toggle{
+    width:44px;height:26px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);
+    position:relative;flex-shrink:0;transition:background 0.15s;
+  }
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform 0.15s, background 0.15s;}
+  .toggle.on{background:color-mix(in srgb, var(--good) 30%, var(--panel-2));border-color:var(--good);}
+  .toggle.on::after{transform:translateX(18px);background:var(--good);}
+
+  .link-box{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;
+    font-size:0.82rem;word-break:break-all;color:var(--muted);margin-bottom:10px;max-height:100px;overflow-y:auto;
+  }
+  .count-pill{
+    display:inline-flex;gap:6px;align-items:center;font-size:0.82rem;color:var(--muted);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin:2px 6px 2px 0;
+  }
+</style>
+
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------------
+   Master candidate roster. Edit this list as your real facts come in —
+   whoever is chatting with Claude keeps this in sync and republishes.
+--------------------------------------------------------------------- */
+const CANDIDATES = [
+  { id:'sreenidhi', name:'Sreenidhi', group:'m1', facts:["Placeholder fact"] },
+  { id:'vinith',    name:'Vinith',    group:'m1', facts:["Placeholder fact"] },
+  { id:'kaustubh',  name:'Kaustubh',  group:'m1', facts:["Placeholder fact"] },
+  { id:'aryan',     name:'Aryan',     group:'m1', facts:["Placeholder fact"] },
+  { id:'avi',       name:'Avi',       group:'m1', facts:["Placeholder fact"] },
+  { id:'rachael',   name:'Rachael',   group:'m1', facts:["Placeholder fact"] },
+
+  { id:'jj',      name:'JJ',      group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'shria',   name:'Shria',   group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'evan',    name:'Evan',    group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'ayush',   name:'Ayush',   group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'tarun',   name:'Tarun',   group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'richard', name:'Richard', group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'naveen',  name:'Naveen',  group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'nikhil',  name:'Nikhil',  group:'upperclassman', facts:["Placeholder fact"] },
+];
+const GROUP_LABEL = { m1:'M1', upperclassman:'Upperclassman' };
+const PLACEHOLDER_RE = /^(Fact \d+|Placeholder fact)$/i;
+// Single-letter codes used only inside the encoded link, to keep it short.
+const SHORT_GROUP = { m1:'a', upperclassman:'b' };
+const LONG_GROUP = { a:'m1', b:'upperclassman' };
+
+/* ---------------------------------------------------------------------
+   Tiny helpers
+--------------------------------------------------------------------- */
+function $(sel, root){ return (root||document).querySelector(sel); }
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showToast(msg, good){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (good ? 'good' : 'bad');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => { t.className = 'toast ' + (good ? 'good' : 'bad'); }, 2200);
+}
+function normalizeName(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function shuffle(arr){
+  const a = [...arr];
+  for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function fmtCountdown(ms){
+  if (ms<=0) return '00:00';
+  const s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  const p=n=>String(n).padStart(2,'0');
+  return h>0 ? `${h}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+}
+function fmtDeviceTime(date){
+  return date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'});
+}
+// URL-safe base64 of a UTF-8 string, so the encoded game payload can live
+// straight in a URL fragment with zero escaping.
+function b64urlEncode(str){
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64urlDecode(str){
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while (str.length % 4) str += '=';
+  return decodeURIComponent(escape(atob(str)));
+}
+
+/* ---------------------------------------------------------------------
+   Router: a bare link (no ?g=) is the private host setup screen.
+   A ?g=<payload> link is the actual game, sent out to players.
+   (Uses a query param, not a #hash — some hosting pages reset/strip
+   hash fragments on load, which broke this when it lived in the hash.)
+--------------------------------------------------------------------- */
+// The link stores a compact form (short group codes, index-based target
+// refs, no per-person id string) to keep the URL as short as possible.
+// Expand it back into the {i,m,g,f,t} shape the rest of the app expects.
+function expandPayload(raw){
+  return {
+    n: raw.n, s: raw.s, gid: raw.gid,
+    p: raw.p.map((person, idx) => ({
+      i: String(idx),
+      m: person.m,
+      g: LONG_GROUP[person.g] || person.g,
+      f: person.f,
+      t: person.t, // already index-strings referencing this same array
+    })),
+  };
+}
+
+function route(){
+  const g = new URLSearchParams(location.search).get('g');
+  if (g) {
+    try {
+      const payload = expandPayload(JSON.parse(b64urlDecode(g)));
+      renderGame(payload);
+      return;
+    } catch(e) {
+      console.error('Bad game link', e);
+    }
+  }
+  renderAdmin();
+}
+document.addEventListener('DOMContentLoaded', route);
+
+/* =======================================================================
+   HOST SETUP SCREEN  (bare link — never share this one)
+======================================================================= */
+function renderAdmin(){
+  const app = $('#app');
+  app.innerHTML = '';
+
+  const wrap = el(`<div class="wrap">
+    <p class="eyebrow">Host setup · not shared</p>
+    <h1>Icebreaker Hunt</h1>
+    <p class="muted">Check in who's actually here, then generate the real game link to paste into Partiful. This screen stays private — only the generated link below ever gets sent out.</p>
+  </div>`);
+  app.appendChild(wrap);
+
+  // --- game name / start time ---
+  const nameVal = localStorage.getItem('ib_admin_name') || 'Icebreaker Hunt';
+  const startVal = localStorage.getItem('ib_admin_start') || '';
+
+  const settings = el(`<div>
+    <label class="field-label">Game name</label>
+    <input type="text" id="game-name" value="${esc(nameVal)}" />
+    <label class="field-label">Unlock time (optional — leave blank to start the instant someone opens the link)</label>
+    <input type="datetime-local" id="start-time" value="${startVal}" />
+  </div>`);
+  wrap.appendChild(settings);
+
+  $('#game-name', settings).addEventListener('input', e => localStorage.setItem('ib_admin_name', e.target.value));
+  $('#start-time', settings).addEventListener('input', e => localStorage.setItem('ib_admin_start', e.target.value));
+
+  // --- attendance checklist ---
+  function isChecked(id){ return localStorage.getItem('ib_att_'+id) !== '0'; }
+  function setChecked(id, val){ localStorage.setItem('ib_att_'+id, val ? '1' : '0'); }
+
+  const countsBar = el(`<div style="margin:16px 0"></div>`);
+  wrap.appendChild(countsBar);
+
+  ['m1','upperclassman'].forEach(group => {
+    const groupWrap = el(`<div></div>`);
+    groupWrap.appendChild(el(`<h2>${GROUP_LABEL[group]}s</h2>`));
+    const list = el(`<div class="card" style="padding:4px 12px"></div>`);
+    CANDIDATES.filter(c => c.group === group).forEach(c => {
+      const isPlaceholder = c.facts.some(f => PLACEHOLDER_RE.test(f));
+      const row = el(`<div class="attend-row">
+        <div class="fact-preview">
+          <span class="nm">${esc(c.name)}</span> ${isPlaceholder ? '<span class="badge warn">placeholder fact</span>' : ''}
+          <span class="fc">${esc(c.facts.join(' · '))}</span>
+        </div>
+        <div class="toggle ${isChecked(c.id) ? 'on' : ''}" data-id="${c.id}"></div>
+      </div>`);
+      row.querySelector('.toggle').addEventListener('click', (e) => {
+        const on = !e.target.classList.contains('on');
+        e.target.classList.toggle('on', on);
+        setChecked(c.id, on);
+        renderCounts();
+      });
+      list.appendChild(row);
+    });
+    groupWrap.appendChild(list);
+    wrap.appendChild(groupWrap);
+  });
+
+  function renderCounts(){
+    const m1n = CANDIDATES.filter(c => c.group==='m1' && isChecked(c.id)).length;
+    const upn = CANDIDATES.filter(c => c.group==='upperclassman' && isChecked(c.id)).length;
+    countsBar.innerHTML = `<span class="count-pill tabular">🟠 ${m1n} M1${m1n===1?'':'s'} checked in</span><span class="count-pill tabular">🔵 ${upn} Upperclass${upn===1?'':'men'} checked in</span>`;
+    genBtn.disabled = (m1n === 0 || upn === 0);
+  }
+
+  // --- generate link ---
+  const genSection = el(`<div style="margin-top:8px"></div>`);
+  wrap.appendChild(genSection);
+  const genBtn = el(`<button class="btn-primary">🕵️ Generate game link</button>`);
+  genSection.appendChild(genBtn);
+  const resultBox = el(`<div style="margin-top:14px"></div>`);
+  genSection.appendChild(resultBox);
+
+  genBtn.addEventListener('click', () => {
+    const attendees = CANDIDATES.filter(c => isChecked(c.id));
+    const m1 = attendees.filter(p => p.group === 'm1');
+    const up = attendees.filter(p => p.group === 'upperclassman');
+    if (m1.length === 0 || up.length === 0) { showToast('Need at least one person checked in on each side.', false); return; }
+
+    const assignments = {};
+    attendees.forEach(p => {
+      const pool = p.group === 'm1' ? up : m1;
+      assignments[p.id] = shuffle(pool).slice(0, Math.min(5, pool.length)).map(t => t.id);
+    });
+
+    // Compact encoding: attendees keep their array position as their id
+    // (no id string stored), targets reference each other by that position,
+    // and group is a single letter — all just to keep the URL shorter.
+    const idToIndex = {};
+    attendees.forEach((p, idx) => { idToIndex[p.id] = idx; });
+
+    const startInput = $('#start-time', settings).value;
+    const payload = {
+      n: $('#game-name', settings).value || 'Icebreaker Hunt',
+      s: startInput ? new Date(startInput).toISOString() : null,
+      gid: Date.now().toString(36),
+      p: attendees.map(p => ({
+        m: p.name,
+        g: SHORT_GROUP[p.group],
+        f: p.facts,
+        t: assignments[p.id].map(tid => String(idToIndex[tid])),
+      })),
+    };
+    const encoded = b64urlEncode(JSON.stringify(payload));
+    const url = location.origin + location.pathname + '?g=' + encoded;
+
+    resultBox.innerHTML = '';
+    resultBox.appendChild(el(`<p class="muted" style="margin-top:0">This is the real game link — copy this into Partiful, not the URL in your address bar. (${url.length} characters)</p>`));
+    resultBox.appendChild(el(`<div class="link-box tabular">${esc(url)}</div>`));
+    const copyBtn = el(`<button class="btn-secondary">📋 Copy link</button>`);
+    copyBtn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); showToast('Link copied!', true); }
+      catch(e) { showToast('Could not auto-copy — select the text above manually.', false); }
+    });
+    resultBox.appendChild(copyBtn);
+    resultBox.appendChild(el(`<div style="height:8px"></div>`));
+    const testBtn = el(`<button class="btn-secondary">👀 Open it yourself to test</button>`);
+    testBtn.addEventListener('click', () => { location.href = url; });
+    resultBox.appendChild(testBtn);
+  });
+
+  renderCounts();
+}
+
+/* =======================================================================
+   PLAYER GAME  (the ?g=... link — this is what gets sent out)
+======================================================================= */
+function renderGame(payload){
+  const GID = payload.gid;
+  const ROSTER = payload.p; // [{i,m,g,f,t}]
+  const meKey = 'ib_'+GID+'_me';
+  let myId = localStorage.getItem(meKey);
+
+  if (!myId || !ROSTER.find(p => p.i === myId)) {
+    renderNamePicker(payload);
+    return;
+  }
+  renderCountdownThenPlay(payload, myId);
+}
+
+function renderNamePicker(payload){
+  const app = $('#app');
+  app.innerHTML = '';
+  const wrap = el(`<div class="wrap">
+    <p class="eyebrow">${esc(payload.n)}</p>
+    <h1>Who are you?</h1>
+    <p class="muted">Find yourself in the list to enter the game.</p>
+  </div>`);
+  app.appendChild(wrap);
+
+  const search = el(`<input type="text" placeholder="Search your name…" autocomplete="off" />`);
+  wrap.appendChild(search);
+  const list = el(`<div></div>`);
+  wrap.appendChild(list);
+
+  function render(filter){
+    const f = normalizeName(filter);
+    list.innerHTML = '';
+    [...payload.p].filter(p => normalizeName(p.m).includes(f)).sort((a,b)=>a.m.localeCompare(b.m)).forEach(p => {
+      const row = el(`<div class="name-row"><span>${esc(p.m)}</span><span class="badge ${p.g}">${GROUP_LABEL[p.g]}</span></div>`);
+      row.addEventListener('click', () => {
+        localStorage.setItem('ib_'+payload.gid+'_me', p.i);
+        renderGame(payload);
+      });
+      list.appendChild(row);
+    });
+  }
+  render('');
+  search.addEventListener('input', () => render(search.value));
+}
+
+function renderCountdownThenPlay(payload, myId){
+  const app = $('#app');
+  app.innerHTML = '';
+
+  const start = payload.s ? new Date(payload.s).getTime() : 0;
+  if (start && Date.now() < start) {
+    const cd = el(`<div class="wrap countdown">
+      <p class="eyebrow">${esc(payload.n)}</p>
+      <h1>Game starts in</h1>
+      <div class="big tabular" id="cd-timer">--:--</div>
+      <p class="muted">Keep this page open — it unlocks automatically.</p>
+    </div>`);
+    app.appendChild(cd);
+    const tick = () => {
+      const remaining = start - Date.now();
+      if (remaining <= 0) { renderCountdownThenPlay(payload, myId); return; }
+      $('#cd-timer', cd).textContent = fmtCountdown(remaining);
+    };
+    tick();
+    const iv = setInterval(() => { if (!document.body.contains(cd)) clearInterval(iv); else tick(); }, 1000);
+    return;
+  }
+
+  renderPlay(payload, myId);
+}
+
+function renderPlay(payload, myId){
+  const GID = payload.gid;
+  const ROSTER = payload.p;
+  const me = ROSTER.find(p => p.i === myId);
+  const foundKey = tid => `ib_${GID}_${myId}_found_${tid}`;
+  const completedKey = `ib_${GID}_${myId}_completedAt`;
+
+  const app = $('#app');
+  app.innerHTML = '';
+
+  const bar = el(`<div class="progress-bar">
+    <span class="badge ${me.g}">${GROUP_LABEL[me.g]}</span>
+    <div class="progress-track"><div class="progress-fill" id="pf" style="width:0%"></div></div>
+    <strong class="tabular" id="pt">0/${me.t.length}</strong>
+  </div>`);
+  app.appendChild(bar);
+
+  const wrap = el(`<div class="wrap">
+    <p class="eyebrow">Player</p>
+    <div class="player-name">${esc(me.m)}</div>
+    <div id="win-banner" class="card" style="display:none;text-align:center;border-color:var(--good)"></div>
+    <h2>Your ${me.t.length} people to find</h2>
+    <p class="muted">Tap on a fact and type in that person's first name</p>
+    <div id="targets"></div>
+  </div>`);
+  app.appendChild(wrap);
+
+  function renderState(){
+    const targetsEl = $('#targets', wrap);
+    targetsEl.innerHTML = '';
+    let foundCount = 0;
+    me.t.forEach(tid => {
+      const person = ROSTER.find(p => p.i === tid);
+      const foundAt = localStorage.getItem(foundKey(tid));
+      if (foundAt) foundCount++;
+      const card = el(`<div class="card fact-card pinned ${foundAt ? 'found' : ''}" style="--pin:${foundAt ? 'var(--good)' : (me.g==='m1' ? 'var(--up)' : 'var(--m1)')}">
+        ${foundAt ? `<div class="found-name">✔ ${esc(person ? person.m : '?')}</div>` : ''}
+        <ul>${(person ? person.f : ['?']).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      </div>`);
+      if (!foundAt) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => openFindModal(tid));
+      }
+      targetsEl.appendChild(card);
+    });
+
+    $('#pf', bar).style.width = (foundCount / me.t.length * 100) + '%';
+    $('#pt', bar).textContent = `${foundCount}/${me.t.length}`;
+
+    const winBanner = $('#win-banner', wrap);
+    if (foundCount === me.t.length) {
+      let finishedAt = localStorage.getItem(completedKey);
+      if (!finishedAt) { finishedAt = new Date().toISOString(); localStorage.setItem(completedKey, finishedAt); }
+      winBanner.style.display = 'block';
+      winBanner.innerHTML = `<div class="display" style="font-size:1.3rem">🎉 You found everyone!</div>
+        <div class="tabular" style="font-size:1.5rem;margin:6px 0;color:var(--good);font-weight:700">${fmtDeviceTime(new Date(finishedAt))}</div>
+        <p class="muted" style="margin:0;font-size:0.85rem">Screenshot this screen to confirm your time.</p>`;
+    } else {
+      winBanner.style.display = 'none';
+    }
+  }
+
+  function openFindModal(tid){
+    const person = ROSTER.find(p => p.i === tid);
+    const factText = person ? person.f.join(' · ') : '';
+    const backdrop = el(`<div class="modal-backdrop">
+      <div class="modal">
+        <h2>Who matches this fact?</h2>
+        <p class="muted" style="margin-top:-6px">${esc(factText)}</p>
+        <input type="text" id="find-input" placeholder="Type their first name…" autocomplete="off" />
+        <button class="btn-primary" id="find-confirm">Confirm</button>
+        <div style="height:10px"></div>
+        <button class="btn-secondary" id="find-cancel">Cancel</button>
+      </div>
+    </div>`);
+    document.body.appendChild(backdrop);
+    const input = $('#find-input', backdrop);
+    input.focus();
+    $('#find-cancel', backdrop).addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+    function submit(){
+      const typed = normalizeName(input.value);
+      if (!typed) return;
+      backdrop.remove();
+
+      const match = ROSTER.find(p => normalizeName(p.m) === typed);
+      if (!match) { showToast('No one found with that name — check spelling.', false); return; }
+      if (match.i === myId) { showToast("That's you!", false); return; }
+      if (match.i !== tid) { showToast("That's not who matches this fact — try again.", false); return; }
+      if (localStorage.getItem(foundKey(match.i))) { showToast(`You already found ${match.m}.`, false); return; }
+
+      localStorage.setItem(foundKey(match.i), new Date().toISOString());
+      showToast(`✔ Found ${match.m}!`, true);
+      renderState();
+    }
+    $('#find-confirm', backdrop).addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  }
+
+  renderState();
+}
+</script>
