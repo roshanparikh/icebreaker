@@ -129,24 +129,24 @@
    whoever is chatting with Claude keeps this in sync and republishes.
 --------------------------------------------------------------------- */
 const CANDIDATES = [
-  { id:'sreenidhi', name:'Sreenidhi', group:'m1', facts:["Placeholder fact"] },
-  { id:'vinith',    name:'Vinith',    group:'m1', facts:["Placeholder fact"] },
-  { id:'kaustubh',  name:'Kaustubh',  group:'m1', facts:["Placeholder fact"] },
-  { id:'aryan',     name:'Aryan',     group:'m1', facts:["Placeholder fact"] },
-  { id:'avi',       name:'Avi',       group:'m1', facts:["Placeholder fact"] },
-  { id:'rachael',   name:'Rachael',   group:'m1', facts:["Placeholder fact"] },
+  { id:'sreenidhi', name:'Sreenidhi', group:'m1', facts:["Placeholder fact 1"] },
+  { id:'vinith',    name:'Vinith',    group:'m1', facts:["Placeholder fact 2"] },
+  { id:'kaustubh',  name:'Kaustubh',  group:'m1', facts:["Placeholder fact 3"] },
+  { id:'aryan',     name:'Aryan',     group:'m1', facts:["Placeholder fact 4"] },
+  { id:'avi',       name:'Avi',       group:'m1', facts:["Placeholder fact 5"] },
+  { id:'rachael',   name:'Rachael',   group:'m1', facts:["Placeholder fact 6"] },
 
-  { id:'jj',      name:'JJ',      group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'shria',   name:'Shria',   group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'evan',    name:'Evan',    group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'ayush',   name:'Ayush',   group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'tarun',   name:'Tarun',   group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'richard', name:'Richard', group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'naveen',  name:'Naveen',  group:'upperclassman', facts:["Placeholder fact"] },
-  { id:'nikhil',  name:'Nikhil',  group:'upperclassman', facts:["Placeholder fact"] },
+  { id:'jj',      name:'JJ',      group:'upperclassman', facts:["Placeholder fact 7"] },
+  { id:'shria',   name:'Shria',   group:'upperclassman', facts:["Placeholder fact 8"] },
+  { id:'evan',    name:'Evan',    group:'upperclassman', facts:["Placeholder fact 9"] },
+  { id:'ayush',   name:'Ayush',   group:'upperclassman', facts:["Placeholder fact 10"] },
+  { id:'tarun',   name:'Tarun',   group:'upperclassman', facts:["Placeholder fact 11"] },
+  { id:'richard', name:'Richard', group:'upperclassman', facts:["Placeholder fact 12"] },
+  { id:'naveen',  name:'Naveen',  group:'upperclassman', facts:["Placeholder fact 13"] },
+  { id:'nikhil',  name:'Nikhil',  group:'upperclassman', facts:["Placeholder fact 14"] },
 ];
 const GROUP_LABEL = { m1:'M1', upperclassman:'Upperclassman' };
-const PLACEHOLDER_RE = /^(Fact \d+|Placeholder fact)$/i;
+const PLACEHOLDER_RE = /^(Fact \d+|Placeholder fact( \d+)?)$/i;
 // Single-letter codes used only inside the encoded link, to keep it short.
 const SHORT_GROUP = { m1:'a', upperclassman:'b' };
 const LONG_GROUP = { a:'m1', b:'upperclassman' };
@@ -351,15 +351,6 @@ function renderAdmin(){
     const testBtn = el(`<button class="btn-secondary">👀 Open it yourself to test</button>`);
     testBtn.addEventListener('click', () => { location.href = url; });
     resultBox.appendChild(testBtn);
-    resultBox.appendChild(el(`<div style="height:8px"></div>`));
-    const shortenBtn = el(`<button class="btn-secondary">🔗 Copy link + shorten it</button>`);
-    shortenBtn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(url); showToast('Link copied — paste it on the page that opens', true); }
-      catch(e) { showToast('Copy failed — copy the link above manually, then paste it there', false); }
-      window.open('https://is.gd/create.php', '_blank');
-    });
-    resultBox.appendChild(shortenBtn);
-    resultBox.appendChild(el(`<p class="muted" style="font-size:0.8rem;margin:8px 0 0">Opens is.gd, a free link shortener — paste the copied link there and it'll give you a short one (like is.gd/abc123) to send instead.</p>`));
   });
 
   renderCounts();
