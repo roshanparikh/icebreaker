@@ -46,11 +46,17 @@
   .btn-secondary{background:var(--panel-2);color:var(--text);width:100%;font-size:0.92rem;border:1px solid var(--line);}
   .btn-primary:active,.btn-secondary:active{transform:scale(0.98);}
 
-  input[type="text"],input[type="datetime-local"]{
+  input[type="text"],input[type="datetime-local"],select{
     width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);
     background:var(--panel-2);color:var(--text);font-size:1rem;margin-bottom:10px;
+    font-family:inherit;
   }
   label.field-label{display:block;font-size:0.78rem;color:var(--muted);margin:14px 0 6px;}
+  .icon-btn{
+    width:30px;height:30px;flex-shrink:0;border-radius:50%;padding:0;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--bad);
+    font-size:0.85rem;font-weight:700;
+  }
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;position:relative;}
   .card.pinned::before{
@@ -151,6 +157,29 @@ const PLACEHOLDER_RE = /^(Fact \d+|Placeholder fact( \d+)?)$/i;
 const SHORT_GROUP = { m1:'a', upperclassman:'b' };
 const LONG_GROUP = { a:'m1', b:'upperclassman' };
 
+// People added by hand on the setup screen (before generating a link),
+// stored on this device so they stick around between visits. Their ids
+// are prefixed 'x_' so we can tell them apart from the built-in roster.
+function loadExtras(){
+  try { return JSON.parse(localStorage.getItem('ib_extras') || '[]'); }
+  catch(e) { return []; }
+}
+function saveExtras(list){ localStorage.setItem('ib_extras', JSON.stringify(list)); }
+
+// Edits to the built-in roster's names/groups/facts (can't mutate CANDIDATES
+// itself, so edits are stored as overrides keyed by id and layered on top).
+function loadOverrides(){
+  try { return JSON.parse(localStorage.getItem('ib_overrides') || '{}'); }
+  catch(e) { return {}; }
+}
+function saveOverrides(obj){ localStorage.setItem('ib_overrides', JSON.stringify(obj)); }
+
+function allCandidates(){
+  const overrides = loadOverrides();
+  const base = CANDIDATES.map(c => overrides[c.id] ? Object.assign({}, c, overrides[c.id]) : c);
+  return base.concat(loadExtras());
+}
+
 /* ---------------------------------------------------------------------
    Tiny helpers
 --------------------------------------------------------------------- */
@@ -235,6 +264,7 @@ document.addEventListener('DOMContentLoaded', route);
 function renderAdmin(){
   const app = $('#app');
   app.innerHTML = '';
+  const ALL = allCandidates();
 
   const wrap = el(`<div class="wrap">
     <p class="eyebrow">Host setup · not shared</p>
@@ -269,13 +299,16 @@ function renderAdmin(){
     const groupWrap = el(`<div></div>`);
     groupWrap.appendChild(el(`<h2>${GROUP_LABEL[group]}s</h2>`));
     const list = el(`<div class="card" style="padding:4px 12px"></div>`);
-    CANDIDATES.filter(c => c.group === group).forEach(c => {
+    ALL.filter(c => c.group === group).forEach(c => {
       const isPlaceholder = c.facts.some(f => PLACEHOLDER_RE.test(f));
+      const isExtra = c.id.startsWith('x_');
       const row = el(`<div class="attend-row">
         <div class="fact-preview">
           <span class="nm">${esc(c.name)}</span> ${isPlaceholder ? '<span class="badge warn">placeholder fact</span>' : ''}
           <span class="fc">${esc(c.facts.join(' · '))}</span>
         </div>
+        <button class="icon-btn" title="Edit">✎</button>
+        ${isExtra ? '<button class="icon-btn" title="Remove">✕</button>' : ''}
         <div class="toggle ${isChecked(c.id) ? 'on' : ''}" data-id="${c.id}"></div>
       </div>`);
       row.querySelector('.toggle').addEventListener('click', (e) => {
@@ -284,18 +317,97 @@ function renderAdmin(){
         setChecked(c.id, on);
         renderCounts();
       });
+      row.querySelectorAll('.icon-btn')[0].addEventListener('click', () => openEditModal(c));
+      if (isExtra) {
+        row.querySelectorAll('.icon-btn')[1].addEventListener('click', () => {
+          saveExtras(loadExtras().filter(x => x.id !== c.id));
+          localStorage.removeItem('ib_att_'+c.id);
+          renderAdmin();
+        });
+      }
       list.appendChild(row);
     });
     groupWrap.appendChild(list);
     wrap.appendChild(groupWrap);
   });
 
+  // --- edit an existing person (built-in or added) ---
+  function openEditModal(c){
+    const isExtra = c.id.startsWith('x_');
+    const backdrop = el(`<div class="modal-backdrop">
+      <div class="modal">
+        <h2>Edit person</h2>
+        <input type="text" id="edit-name" value="${esc(c.name)}" placeholder="Name" autocomplete="off" />
+        <select id="edit-group">
+          <option value="m1" ${c.group==='m1'?'selected':''}>M1</option>
+          <option value="upperclassman" ${c.group==='upperclassman'?'selected':''}>Upperclassman</option>
+        </select>
+        <input type="text" id="edit-fact" value="${esc(c.facts.join(' · '))}" placeholder="Their fact" autocomplete="off" />
+        <button class="btn-primary" id="edit-save">Save</button>
+        <div style="height:10px"></div>
+        <button class="btn-secondary" id="edit-cancel">Cancel</button>
+      </div>
+    </div>`);
+    document.body.appendChild(backdrop);
+    $('#edit-cancel', backdrop).addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+    $('#edit-save', backdrop).addEventListener('click', () => {
+      const name = $('#edit-name', backdrop).value.trim();
+      const group = $('#edit-group', backdrop).value;
+      const fact = $('#edit-fact', backdrop).value.trim();
+      if (!name || !fact) { showToast('Enter a name and a fact.', false); return; }
+      if (isExtra) {
+        const extras = loadExtras();
+        const idx = extras.findIndex(x => x.id === c.id);
+        if (idx >= 0) extras[idx] = Object.assign({}, extras[idx], { name, group, facts:[fact] });
+        saveExtras(extras);
+      } else {
+        const overrides = loadOverrides();
+        overrides[c.id] = { name, group, facts:[fact] };
+        saveOverrides(overrides);
+      }
+      backdrop.remove();
+      showToast(`Saved ${name}.`, true);
+      renderAdmin();
+    });
+  }
+
   function renderCounts(){
-    const m1n = CANDIDATES.filter(c => c.group==='m1' && isChecked(c.id)).length;
-    const upn = CANDIDATES.filter(c => c.group==='upperclassman' && isChecked(c.id)).length;
+    const m1n = ALL.filter(c => c.group==='m1' && isChecked(c.id)).length;
+    const upn = ALL.filter(c => c.group==='upperclassman' && isChecked(c.id)).length;
     countsBar.innerHTML = `<span class="count-pill tabular">🟠 ${m1n} M1${m1n===1?'':'s'} checked in</span><span class="count-pill tabular">🔵 ${upn} Upperclass${upn===1?'':'men'} checked in</span>`;
     genBtn.disabled = (m1n === 0 || upn === 0);
   }
+
+  // --- add someone new ---
+  const addWrap = el(`<div></div>`);
+  addWrap.appendChild(el(`<h2>Add someone</h2>`));
+  const addCard = el(`<div class="card">
+    <input type="text" id="new-name" placeholder="Name" autocomplete="off" />
+    <select id="new-group">
+      <option value="m1">M1</option>
+      <option value="upperclassman">Upperclassman</option>
+    </select>
+    <input type="text" id="new-fact" placeholder="Their fact" autocomplete="off" />
+    <button class="btn-secondary" id="add-person-btn">➕ Add person</button>
+  </div>`);
+  addWrap.appendChild(addCard);
+  wrap.appendChild(addWrap);
+
+  $('#add-person-btn', addCard).addEventListener('click', () => {
+    const name = $('#new-name', addCard).value.trim();
+    const group = $('#new-group', addCard).value;
+    const fact = $('#new-fact', addCard).value.trim();
+    if (!name || !fact) { showToast('Enter a name and a fact.', false); return; }
+    const extras = loadExtras();
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '') || 'person';
+    const id = 'x_' + slug + '_' + Date.now().toString(36);
+    extras.push({ id, name, group, facts: [fact] });
+    saveExtras(extras);
+    showToast(`Added ${name}!`, true);
+    renderAdmin();
+  });
 
   // --- generate link ---
   const genSection = el(`<div style="margin-top:8px"></div>`);
@@ -306,7 +418,7 @@ function renderAdmin(){
   genSection.appendChild(resultBox);
 
   genBtn.addEventListener('click', () => {
-    const attendees = CANDIDATES.filter(c => isChecked(c.id));
+    const attendees = ALL.filter(c => isChecked(c.id));
     const m1 = attendees.filter(p => p.group === 'm1');
     const up = attendees.filter(p => p.group === 'upperclassman');
     if (m1.length === 0 || up.length === 0) { showToast('Need at least one person checked in on each side.', false); return; }
