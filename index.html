@@ -590,12 +590,18 @@ function renderPlay(payload, myId){
   const wrap = el(`<div class="wrap">
     <p class="eyebrow">Player</p>
     <div class="player-name">${esc(me.m)}</div>
+    <button class="btn-secondary" id="switch-player" style="margin-bottom:18px">Not you? Switch player</button>
     <div id="win-banner" class="card" style="display:none;text-align:center;border-color:var(--good)"></div>
     <h2>Your ${me.t.length} people to find</h2>
     <p class="muted">Tap on a fact and type in that person's first name</p>
     <div id="targets"></div>
   </div>`);
   app.appendChild(wrap);
+
+  $('#switch-player', wrap).addEventListener('click', () => {
+    localStorage.removeItem('ib_'+GID+'_me');
+    renderGame(payload);
+  });
 
   function renderState(){
     const targetsEl = $('#targets', wrap);
