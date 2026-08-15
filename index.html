@@ -135,21 +135,36 @@
    whoever is chatting with Claude keeps this in sync and republishes.
 --------------------------------------------------------------------- */
 const CANDIDATES = [
-  { id:'sreenidhi', name:'Sreenidhi', group:'m1', facts:["Placeholder fact 1"] },
-  { id:'vinith',    name:'Vinith',    group:'m1', facts:["Placeholder fact 2"] },
-  { id:'kaustubh',  name:'Kaustubh',  group:'m1', facts:["Placeholder fact 3"] },
-  { id:'aryan',     name:'Aryan',     group:'m1', facts:["Placeholder fact 4"] },
-  { id:'avi',       name:'Avi',       group:'m1', facts:["Placeholder fact 5"] },
-  { id:'rachael',   name:'Rachael',   group:'m1', facts:["Placeholder fact 6"] },
+  { id:'sreenidhi', name:'Sreenidhi', group:'m1', facts:["Ran a half marathon in DC this May"] },
+  { id:'vinith',    name:'Vinith',    group:'m1', facts:["Outgrew a chocolate allergy"] },
+  { id:'kaustubh',  name:'Kaustubh',  group:'m1', facts:["From Roshan's hometown"] },
+  { id:'aryan',     name:'Aryan',     group:'m1', facts:["Fluent in Greek"] },
+  { id:'avi',       name:'Avi',       group:'m1', facts:["Ate an entire watermelon for their birthday"] },
+  { id:'rachael',   name:'Rachael',   group:'m1', facts:["Was part of the largest women's college boxing club in the US"] },
+  { id:'mihir',     name:'Mihir',     group:'m1', facts:["Got kicked off of Caltech's campus"] },
+  { id:'abhi',      name:'Abhi',      group:'m1', facts:["Can do a Kermit the frog impersonation"] },
+  { id:'neel',      name:'Neel',      group:'m1', facts:["Got kicked out of Costco"] },
+  { id:'pranathi',  name:'Pranathi',  group:'m1', facts:["Can ride a motorcycle (not very well)"] },
+  { id:'arini',     name:'Arini',     group:'m1', facts:["Used to drive for a buggy racing team in college"] },
 
-  { id:'jj',      name:'JJ',      group:'upperclassman', facts:["Placeholder fact 7"] },
-  { id:'shria',   name:'Shria',   group:'upperclassman', facts:["Placeholder fact 8"] },
-  { id:'evan',    name:'Evan',    group:'upperclassman', facts:["Placeholder fact 9"] },
-  { id:'ayush',   name:'Ayush',   group:'upperclassman', facts:["Placeholder fact 10"] },
-  { id:'tarun',   name:'Tarun',   group:'upperclassman', facts:["Placeholder fact 11"] },
-  { id:'richard', name:'Richard', group:'upperclassman', facts:["Placeholder fact 12"] },
-  { id:'naveen',  name:'Naveen',  group:'upperclassman', facts:["Placeholder fact 13"] },
-  { id:'nikhil',  name:'Nikhil',  group:'upperclassman', facts:["Placeholder fact 14"] },
+  { id:'jj',       name:'JJ',       group:'upperclassman', facts:["Born on his dad's birthday"] },
+  { id:'shria',    name:'Shria',    group:'upperclassman', facts:["Went skydiving"] },
+  { id:'drew',     name:'Drew',     group:'upperclassman', facts:["Has torn both labrums"] },
+  { id:'menaka',   name:'Menaka',   group:'upperclassman', facts:["Received an email from their Spanish teacher about a dead squirrel"] },
+  { id:'ayush',    name:'Ayush',    group:'upperclassman', facts:["Used to love sucking on wet towels as a kid"] },
+  { id:'tarun',    name:'Tarun',    group:'upperclassman', facts:["Has an abnormally heightened sense of sound"] },
+  { id:'maanasa',  name:'Maanasa',  group:'upperclassman', facts:["Opened for a Bollywood singer"] },
+  { id:'richard',  name:'Richard',  group:'upperclassman', facts:["Can make lachcha paratha"] },
+  { id:'naveen',   name:'Naveen',   group:'upperclassman', facts:["Left leg was detached from the knee down at birth"] },
+  { id:'aakash',   name:'Aakash',   group:'upperclassman', facts:["Has never drank coffee"] },
+  { id:'anish',    name:'Anish',    group:'upperclassman', facts:["Was swept out to sea while paddle boarding"] },
+  { id:'saloni',   name:'Saloni',   group:'upperclassman', facts:["Hiked the mountain on the Patagonia logo"] },
+  { id:'sachin',   name:'Sachin',   group:'upperclassman', facts:["Can unicycle"] },
+  { id:'om',       name:'Om',       group:'upperclassman', facts:["Won deans cup football 2 years in a row"] },
+  { id:'yazan',    name:'Yazan',    group:'upperclassman', facts:["Lives with 4 desis and therefore is honorary desi"] },
+  { id:'peter',    name:'Peter',    group:'upperclassman', facts:["Has a college friend on the Yankees"] },
+  { id:'jai',      name:'Jai',      group:'upperclassman', facts:["Can solve a Rubik's cube in under a minute"] },
+  { id:'salonee',  name:'Salonee',  group:'upperclassman', facts:["Interned at the Smithsonian"] },
 ];
 const GROUP_LABEL = { m1:'M1', upperclassman:'Upperclassman' };
 const PLACEHOLDER_RE = /^(Fact \d+|Placeholder fact( \d+)?)$/i;
@@ -334,9 +349,11 @@ function renderAdmin(){
   // --- edit an existing person (built-in or added) ---
   function openEditModal(c){
     const isExtra = c.id.startsWith('x_');
+    const hasOverride = !isExtra && !!loadOverrides()[c.id];
     const backdrop = el(`<div class="modal-backdrop">
       <div class="modal">
         <h2>Edit person</h2>
+        ${hasOverride ? '<p class="muted" style="margin-top:-6px">You\'ve edited this person on this device — that edit will keep overriding future roster updates until you reset it.</p>' : ''}
         <input type="text" id="edit-name" value="${esc(c.name)}" placeholder="Name" autocomplete="off" />
         <select id="edit-group">
           <option value="m1" ${c.group==='m1'?'selected':''}>M1</option>
@@ -345,12 +362,24 @@ function renderAdmin(){
         <input type="text" id="edit-fact" value="${esc(c.facts.join(' · '))}" placeholder="Their fact" autocomplete="off" />
         <button class="btn-primary" id="edit-save">Save</button>
         <div style="height:10px"></div>
+        ${hasOverride ? '<button class="btn-secondary" id="edit-reset">↺ Reset to original</button><div style="height:10px"></div>' : ''}
         <button class="btn-secondary" id="edit-cancel">Cancel</button>
       </div>
     </div>`);
     document.body.appendChild(backdrop);
     $('#edit-cancel', backdrop).addEventListener('click', () => backdrop.remove());
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+    if (hasOverride) {
+      $('#edit-reset', backdrop).addEventListener('click', () => {
+        const overrides = loadOverrides();
+        delete overrides[c.id];
+        saveOverrides(overrides);
+        backdrop.remove();
+        showToast('Reset to the original roster entry.', true);
+        renderAdmin();
+      });
+    }
 
     $('#edit-save', backdrop).addEventListener('click', () => {
       const name = $('#edit-name', backdrop).value.trim();
